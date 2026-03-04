@@ -36,7 +36,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     task = " ".join(sys.argv[1:])
-    output, status = run(task, simple_executor)
+    output, status = run(task)
 
     print(f"\n{'='*60}")
     print(f"RESULT: {status}")

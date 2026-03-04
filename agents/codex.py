@@ -1,23 +1,23 @@
 import json, urllib.request
-from config import OPENAI_API_KEY, CODEX_MODEL, OPENAI_BASE_URL
+from config import ANTHROPIC_KEY, ANTHROPIC_BASE_URL
 
-def call(system, user, max_tokens=4000):
+# Codex role uses claude-sonnet as executor (Codex OAuth not available via raw API)
+EXECUTOR_MODEL = "claude-sonnet-4-5"
+
+def call(system, user, max_tokens=8000):
     payload = {
-        "model": CODEX_MODEL,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user}
-        ],
+        "model": EXECUTOR_MODEL,
         "max_tokens": max_tokens,
-        "temperature": 0.2
+        "system": system,
+        "messages": [{"role": "user", "content": user}]
     }
     req = urllib.request.Request(
-        OPENAI_BASE_URL,
+        ANTHROPIC_BASE_URL,
         data=json.dumps(payload).encode(),
-        headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"}
+        headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"}
     )
     with urllib.request.urlopen(req, timeout=120) as r:
-        return json.load(r)["choices"][0]["message"]["content"]
+        return json.load(r)["content"][0]["text"]
 
 def execute(plan, progress_context=""):
     return call(
@@ -30,55 +30,21 @@ Plan:
 {f'Progress so far:{chr(10)}{progress_context[-2000:]}' if progress_context else ''}"""
     )
 
-def triage(issues, output):
-    """
-    Codex reads Opus issues, decides which are real, locks the list.
-    Returns a locked issue list as a string. This list cannot be changed.
-    """
+def triage(issues, plan, output):
     return call(
-        "You are Codex. You triage reviewer feedback honestly. Accept real issues, reject wrong or out-of-scope ones.",
-        f"""Opus raised these issues about your output. Triage them.
+        "You are Codex, triaging issues. Lock down exactly what you will fix — you cannot change this list later.",
+        f"""Triage these issues and state exactly what you will fix.
 
-Issues:
+Issues from review:
 {issues}
-
-Your output:
-{output}
-
-Reply with LOCKED ISSUES (the ones you will fix, numbered):
-- Accept: genuine bugs, missing requirements, real errors
-- Reject: style opinions, wrong assumptions, out-of-scope requests
-
-Format:
-WILL FIX:
-1. [issue]
-2. [issue]
-
-SKIPPING:
-- [issue]: [one-line reason]
-
-This list is final. You will be held to only these items.""",
-        max_tokens=800
-    )
-
-def fix(plan, output, locked_issues, progress_context=""):
-    """
-    Codex fixes only the locked issue list. No scope creep.
-    """
-    return call(
-        "You are Codex. Fix ONLY the items in the locked issue list. Do not change anything else.",
-        f"""Fix only these locked issues. Do not touch anything else.
-
-Locked issues to fix:
-{locked_issues}
 
 Original plan:
 {plan}
 
-Current output:
+Your output so far:
 {output}
 
-{f'Progress log:{chr(10)}{progress_context[-1000:]}' if progress_context else ''}
-
-Return the complete updated output with ONLY those issues fixed."""
+List the issues you will fix (numbered). This list is now locked — you cannot add or remove items later.
+Then fix them and return the complete updated output.""",
+        max_tokens=8000
     )

@@ -16,7 +16,7 @@ def call(system, user, max_tokens=4000):
         data=json.dumps(payload).encode(),
         headers={"Authorization": f"Bearer {KIMI_API_KEY}", "Content-Type": "application/json"}
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with urllib.request.urlopen(req, timeout=90) as r:
         return json.load(r)["choices"][0]["message"]["content"]
 
 def spec(task):

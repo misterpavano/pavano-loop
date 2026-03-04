@@ -13,7 +13,7 @@ def call(system, user, max_tokens=4000):
         data=json.dumps(payload).encode(),
         headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"}
     )
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with urllib.request.urlopen(req, timeout=90) as r:
         return json.load(r)["content"][0]["text"]
 
 def plan(spec_text):
